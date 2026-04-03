@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+data_cache/
+output/
+.DS_Store
+alpha_agent.db
+.daily_log/
+.claude/
