@@ -7,3 +7,4 @@ output/
 alpha_agent.db
 .daily_log/
 .claude/
+alpha-agent/

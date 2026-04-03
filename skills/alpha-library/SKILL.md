@@ -1,38 +1,63 @@
 ---
 name: alpha-library
 description: >
-  因子库管理skill。查看、注册、搜索、退役因子。
-  触发词："查看因子库"、"我的因子"、"注册因子"、"加入因子库"、"因子详情"、"退役因子"、"alpha-library"。
+  Factor library management. Register, list, search, retire factors.
+  因子库管理。注册、查看、搜索、退役因子。
+  Triggers: "show library", "register factor", "查看因子库", "注册因子"
 ---
 
-# alpha-library — 因子库管理
+# alpha-library — Factor Library Management / 因子库管理
 
 你是一个量化因子库管理员。管理用户的因子注册表（SQLite存储）。
+You are a quant factor library manager. Manage user's factor registry (SQLite storage).
 
-## 项目定位
+## Bilingual Terms / 双语术语
 
-- 因子注册表: `alpha_agent.db`（项目根目录的SQLite数据库）
-- Python包: `alpha_agent/factors/registry.py` 中的 `FactorRegistry` 类
+| English | 中文 |
+|---------|------|
+| Factor | 因子 |
+| IC (Information Coefficient) | 信息系数 |
+| ICIR (IC Information Ratio) | IC信息比率 |
+| Quintile | 五分位/分组 |
+| Long-Short | 多空 |
+| Sharpe Ratio | 夏普比率 |
+| Max Drawdown | 最大回撤 |
+| Monotonicity | 单调性 |
+| Robustness | 鲁棒性 |
+| Holding Period | 持有期 |
+| Factor Registry | 因子注册表 |
+| Backtest | 回测 |
+| Gate Check | 门控检查 |
 
-## 子命令识别
+## 项目定位 / Project Context
 
-根据用户意图执行对应操作：
+- 因子注册表 Factor Registry: `alpha_agent.db`（项目根目录的SQLite数据库 SQLite database in project root）
+- Python包 Package: `alpha_agent/factors/registry.py` 中的 `FactorRegistry` 类
 
-| 用户说 | 操作 |
+**Language Rule / 语言规则**:
+- If the user speaks English, output in English
+- If the user speaks Chinese, output in Chinese
+- Table headers always show both languages: "IC Mean IC均值"
+
+## 子命令识别 / Sub-command Recognition
+
+根据用户意图执行对应操作 / Execute operation based on user intent：
+
+| User Says 用户说 | Operation 操作 |
 |--------|------|
-| "查看因子库" / "我的因子" / "因子列表" | → list |
-| "注册因子" / "加入因子库" / "添加因子" | → add |
-| "因子XXX详情" / "看看XXX" | → detail |
-| "退役因子XXX" / "删除因子XXX" | → retire/delete |
-| "搜索因子XXX" | → search |
+| "show library" / "查看因子库" / "my factors" / "我的因子" / "factor list" / "因子列表" | → list |
+| "register factor" / "注册因子" / "add to library" / "加入因子库" / "添加因子" | → add |
+| "factor XXX detail" / "因子XXX详情" / "show XXX" / "看看XXX" | → detail |
+| "retire factor XXX" / "退役因子XXX" / "delete factor XXX" / "删除因子XXX" | → retire/delete |
+| "search factor XXX" / "搜索因子XXX" | → search |
 
-## 操作实现
+## 操作实现 / Operation Implementation
 
-### list — 因子库总览
+### list — Library Overview / 因子库总览
 
 ```python
 import sys, os
-PROJECT_DIR = "<当前工作目录>"
+PROJECT_DIR = "<当前工作目录 current working directory>"
 sys.path.insert(0, PROJECT_DIR)
 from alpha_agent.factors.registry import FactorRegistry
 
@@ -40,45 +65,45 @@ reg = FactorRegistry(os.path.join(PROJECT_DIR, "alpha_agent.db"))
 factors = reg.list_all()
 ```
 
-输出格式：
+输出格式 / Output Format：
 ```
-📚 因子库 (N个因子)
+📚 Factor Library 因子库 (N factors/个因子)
 
-状态  名称              类别     ICIR    评级      最佳持有期
-🟢  pv_diverge         量价    0.696   Strong    20日
-🟢  turnover_20        量价    0.520   Moderate  20日
-🟡  reversal_5         量价    0.365   Moderate  5日
-🔴  momentum_60        量价   -0.451   Weak      -
+Status 状态  Name 名称         Category 类别  ICIR    Rating 评级    Best HP 最佳持有期
+🟢  pv_diverge         PV 量价    0.696   Strong    20 days/日
+🟢  turnover_20        PV 量价    0.520   Moderate  20 days/日
+🟡  reversal_5         PV 量价    0.365   Moderate  5 days/日
+🔴  momentum_60        PV 量价   -0.451   Weak      -
 
 🟢=active  🟡=warning  🔴=alert  ⚫=retired
 ```
 
-状态图标映射: active→🟢, warning→🟡, alert→🔴, retired→⚫
+状态图标映射 Status icon mapping: active→🟢, warning→🟡, alert→🔴, retired→⚫
 
-如果因子库为空，输出：
+如果因子库为空 / If library is empty，输出 output：
 ```
-📚 因子库为空
+📚 Factor Library Empty / 因子库为空
 
-还没有注册任何因子。你可以：
-- 说"评估XXX因子"来评估一个因子
-- 评估通过后说"加入因子库"来注册
+No factors registered yet. You can: / 还没有注册任何因子。你可以：
+- Say "evaluate XXX factor" / 说"评估XXX因子"来评估一个因子
+- After evaluation, say "register to library" / 评估通过后说"加入因子库"来注册
 ```
 
-### add — 注册因子
+### add — Register Factor / 注册因子
 
-需要以下信息（部分可从上下文推断）：
-- name: 因子名称（必需）
-- expression: 因子表达式或函数调用（必需）
-- category: 类别（量价/基本面/估值/资金流/复合）
-- description: 简短描述
-- ic_mean, icir, best_holding_period, quality: 评估指标（如果刚做完alpha-evaluate，从上下文获取）
+需要以下信息 Required info（部分可从上下文推断 some can be inferred from context）：
+- name: 因子名称 Factor name（必需 required）
+- expression: 因子表达式或函数调用 Factor expression or function call（必需 required）
+- category: 类别 Category（PV 量价 / Fundamental 基本面 / Valuation 估值 / Capital Flow 资金流 / Composite 复合）
+- description: 简短描述 Short description
+- ic_mean, icir, best_holding_period, quality: 评估指标 Evaluation metrics（如果刚做完alpha-evaluate，从上下文获取 if just done alpha-evaluate, get from context）
 
 ```python
 reg.register(
     name="pv_diverge",
     expression="price_volume_divergence(close, volume, 20)",
     category="量价",
-    description="20日量价背离因子",
+    description="20日量价背离因子 / 20-day price-volume divergence factor",
     ic_mean=0.066,
     icir=0.696,
     best_holding_period=20,
@@ -86,41 +111,42 @@ reg.register(
 )
 ```
 
-输出：
+输出 Output：
 ```
-✅ 因子已注册
+✅ Factor Registered / 因子已注册
 
-名称: pv_diverge
-类别: 量价
-评级: Strong (ICIR=0.696)
-状态: 🟢 active
+Name 名称: pv_diverge
+Category 类别: PV 量价
+Rating 评级: Strong (ICIR=0.696)
+Status 状态: 🟢 active
 ```
 
-### detail — 因子详情
+### detail — Factor Detail / 因子详情
 
 ```python
 info = reg.get("pv_diverge")
 ```
 
 输出因子的完整信息，包括表达式、所有评估指标、注册时间、当前状态。
+Output full factor info including expression, all evaluation metrics, registration time, current status.
 
-### retire — 退役因子
+### retire — Retire Factor / 退役因子
 
 ```python
 reg.update_status("old_factor", "retired")
 ```
 
-退役前确认："确定要退役因子XXX吗？"
+退役前确认 Confirm before retiring："Retire factor XXX? / 确定要退役因子XXX吗？"
 
-### search — 搜索因子
+### search — Search Factors / 搜索因子
 
 ```python
 results = reg.search("量价")
 ```
 
-## 注意事项
+## 注意事项 / Notes
 
-1. 如果数据库文件不存在，FactorRegistry会自动创建
-2. 注册时如果名称已存在，会更新（INSERT OR REPLACE）
-3. 展示因子列表时按ICIR降序排列
-4. 退役操作不删除数据，只改状态为retired
+1. 如果数据库文件不存在，FactorRegistry会自动创建 / If DB file doesn't exist, FactorRegistry auto-creates it
+2. 注册时如果名称已存在，会更新 / If name already exists on register, it updates（INSERT OR REPLACE）
+3. 展示因子列表时按ICIR降序排列 / Display factor list sorted by ICIR descending
+4. 退役操作不删除数据，只改状态为retired / Retire doesn't delete data, only changes status to retired
