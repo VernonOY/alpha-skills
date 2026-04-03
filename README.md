@@ -6,6 +6,8 @@ A collection of structured skill definitions that turn any LLM-powered coding as
 
 > 一套量化因子研究技能集，将任何AI编程助手变成专业的因子研究工作站。
 
+![Alpha Skills Demo](assets/demo.png)
+
 ---
 
 ## What are Alpha Skills?
