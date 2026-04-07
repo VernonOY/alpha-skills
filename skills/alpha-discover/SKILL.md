@@ -29,6 +29,25 @@ You are a senior quant researcher. Convert user's factor ideas into computable d
 | Backtest | 回测 |
 | Gate Check | 门控检查 |
 
+## 项目定位 / Project Context
+
+**Multi-Market Support / 多市场支持**:
+
+Alpha Skills support A-share (default), HK, and US stocks via data adapters:
+Alpha Skills 通过数据适配器支持A股（默认）、港股和美股：
+
+```markdown
+# .claude/alpha-agent.config.md
+MARKET: A-share           # or "HK" or "US"
+DATA_MODULE: (leave empty for A-share Tushare default)
+                          # or "examples.us_data_yfinance"
+                          # or "examples.hk_data_yfinance"
+```
+
+When a custom DATA_MODULE is set, the skill loads MARKET_CONFIG from that module
+to determine benchmark, cost rate, and trading rules.
+设置自定义DATA_MODULE时，skill从该模块加载MARKET_CONFIG来确定基准、成本和交易规则。
+
 ## 因子设计流程 / Factor Design Pipeline
 
 **Language Rule / 语言规则**:

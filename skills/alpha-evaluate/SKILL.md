@@ -48,6 +48,23 @@ If the user has defined a custom data module (e.g., `my_data.py`), use it first.
 检查方式：查看配置文件中是否有 `DATA_MODULE` 字段指定了自定义模块路径。
 Check: look for `DATA_MODULE` field in config file for custom module path.
 
+**Multi-Market Support / 多市场支持**:
+
+Alpha Skills support A-share (default), HK, and US stocks via data adapters:
+Alpha Skills 通过数据适配器支持A股（默认）、港股和美股：
+
+```markdown
+# .claude/alpha-agent.config.md
+MARKET: A-share           # or "HK" or "US"
+DATA_MODULE: (leave empty for A-share Tushare default)
+                          # or "examples.us_data_yfinance"
+                          # or "examples.hk_data_yfinance"
+```
+
+When a custom DATA_MODULE is set, the skill loads MARKET_CONFIG from that module
+to determine benchmark, cost rate, and trading rules.
+设置自定义DATA_MODULE时，skill从该模块加载MARKET_CONFIG来确定基准、成本和交易规则。
+
 **Language Rule / 语言规则**:
 - If the user speaks English, output in English
 - If the user speaks Chinese, output in Chinese
@@ -77,6 +94,29 @@ Check: look for `DATA_MODULE` field in config file for custom module path.
 - IC快筛阈值 IC quick-filter threshold: 0.02
 - Strong ICIR: 0.5
 - Moderate ICIR: 0.3
+
+### Step 1.5: 确定市场 / Determine Market
+
+从配置读取 `MARKET` 字段（默认 "A-share"）：
+Read `MARKET` field from config (default "A-share"):
+
+- **A-share (A股)**: 默认Tushare数据源，data_cache/ 目录
+- **US (美股)**: DATA_MODULE=examples.us_data_yfinance
+- **HK (港股)**: DATA_MODULE=examples.hk_data_yfinance
+- **Custom**: 用户自定义模块 / user custom module
+
+如果配置了 DATA_MODULE，加载该模块并读取其 MARKET_CONFIG：
+If DATA_MODULE is configured, load module and read MARKET_CONFIG:
+
+```python
+import importlib
+if config.get("DATA_MODULE"):
+    data_mod = importlib.import_module(config["DATA_MODULE"])
+    market_config = data_mod.MARKET_CONFIG
+    cost_rate = market_config["cost_rate"]
+    benchmark_symbol = market_config["benchmark"]
+    price_limit = market_config.get("price_limit")  # None表示无涨跌停
+```
 
 ### Step 2: 加载数据 / Load Data
 

@@ -34,6 +34,26 @@ You are a quant factor library manager. Manage user's factor registry (SQLite st
 - 因子注册表 Factor Registry: `alpha_agent.db`（项目根目录的SQLite数据库 SQLite database in project root）
 - Python包 Package: `alpha_agent/factors/registry.py` 中的 `FactorRegistry` 类
 
+**Multi-Market Support / 多市场支持**:
+
+Alpha Skills support A-share (default), HK, and US stocks via data adapters:
+Alpha Skills 通过数据适配器支持A股（默认）、港股和美股：
+
+```markdown
+# .claude/alpha-agent.config.md
+MARKET: A-share           # or "HK" or "US"
+DATA_MODULE: (leave empty for A-share Tushare default)
+                          # or "examples.us_data_yfinance"
+                          # or "examples.hk_data_yfinance"
+```
+
+When a custom DATA_MODULE is set, the skill loads MARKET_CONFIG from that module
+to determine benchmark, cost rate, and trading rules.
+设置自定义DATA_MODULE时，skill从该模块加载MARKET_CONFIG来确定基准、成本和交易规则。
+
+注册因子时建议记录 `market` 字段（A-share / HK / US），以便多市场因子库管理。
+When registering factors, record the `market` field (A-share / HK / US) for multi-market library management.
+
 **Language Rule / 语言规则**:
 - If the user speaks English, output in English
 - If the user speaks Chinese, output in Chinese
@@ -95,6 +115,7 @@ No factors registered yet. You can: / 还没有注册任何因子。你可以：
 - name: 因子名称 Factor name（必需 required）
 - expression: 因子表达式或函数调用 Factor expression or function call（必需 required）
 - category: 类别 Category（PV 量价 / Fundamental 基本面 / Valuation 估值 / Capital Flow 资金流 / Composite 复合）
+- market: 市场 Market（A-share / HK / US，从配置的 MARKET 字段获取 read from config MARKET field）
 - description: 简短描述 Short description
 - ic_mean, icir, best_holding_period, quality: 评估指标 Evaluation metrics（如果刚做完alpha-evaluate，从上下文获取 if just done alpha-evaluate, get from context）
 
@@ -103,6 +124,7 @@ reg.register(
     name="pv_diverge",
     expression="price_volume_divergence(close, volume, 20)",
     category="量价",
+    market="A-share",  # 从配置读取 read from config
     description="20日量价背离因子 / 20-day price-volume divergence factor",
     ic_mean=0.066,
     icir=0.696,

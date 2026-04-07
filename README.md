@@ -62,15 +62,44 @@ pip install pandas numpy scipy matplotlib pyarrow
 pip install tushare
 ```
 
-## Data Sources
+## Multi-Market Support 多市场支持
 
-Alpha Skills support **any data source**. Configure via `DATA_SOURCE` in your config file:
+Alpha Skills work out-of-the-box with **A-share, HK, and US** stocks:
 
-| Source | Config | Description |
-|--------|--------|-------------|
-| **Tushare** | `DATA_SOURCE: tushare` | A-share data via [Tushare Pro](https://tushare.pro) (default) |
-| **CSV/Parquet** | `DATA_SOURCE: csv` + `DATA_DIR: /path` | Read from local files |
-| **Custom module** | `DATA_MODULE: my_data` | Your own Python data loader |
+| Market 市场 | Adapter 适配器 | Data Source 数据源 | Setup 配置 |
+|-------------|----------------|-------------------|------------|
+| **A-share 中国A股** | Default | [Tushare Pro](https://tushare.pro) | `pip install tushare` |
+| **HK 港股** | `examples/hk_data_yfinance.py` | Yahoo Finance | `pip install yfinance` |
+| **US 美股** | `examples/us_data_yfinance.py` | Yahoo Finance | `pip install yfinance` |
+
+Just set `MARKET` and `DATA_MODULE` in your config:
+
+```markdown
+# US stocks
+MARKET: US
+DATA_MODULE: examples.us_data_yfinance
+
+# HK stocks
+MARKET: HK
+DATA_MODULE: examples.hk_data_yfinance
+
+# A-share (default, no DATA_MODULE needed)
+MARKET: A-share
+```
+
+The skills automatically adapt trading rules per market:
+
+| Rule 规则 | A-share | HK | US |
+|-----------|---------|-----|-----|
+| Price Limit 涨跌停 | ±10% | None 无 | None 无 |
+| T+N | T+1 | T+0 | T+0 |
+| Round-trip Cost 双边成本 | 0.3% | 0.2% | 0.1% |
+
+## Custom Data Sources 自定义数据源
+
+Need a different data source (AkShare, Bloomberg, Binance, etc.)? Write your own adapter — see [`examples/README.md`](examples/README.md) for the interface spec.
+
+需要其他数据源（AkShare、Bloomberg、币安等）？编写自己的适配器 — 接口规范见 [`examples/README.md`](examples/README.md)。
 
 ### Using Your Own Data API
 
@@ -147,11 +176,11 @@ COST_RATE: 0.003
 ## Roadmap
 
 - [x] 6 core research skills (discover / evaluate / library / backtest / monitor / report)
-- [x] A-share market support (Tushare)
+- [x] A-share, HK, and US market support (out-of-the-box)
+- [x] Market-aware trading rules (price limits, T+N, costs)
 - [x] Configurable evaluation criteria & gate checks
 - [x] Custom data source support (CSV / Parquet / custom Python module)
 - [x] Multi-platform compatibility (Cursor, Windsurf, Continue, ChatGPT, local models)
-- [ ] US/HK market skill variants
 - [ ] Automated factor mining skill (genetic programming)
 - [ ] Portfolio construction skill (factor → tradeable portfolio)
 - [ ] Market regime detection & factor-regime mapping

@@ -36,6 +36,23 @@ You are a quant strategy backtest engineer. Build factor-based stock selection s
 - 配置 Config: `.claude/alpha-agent.config.md` (门控指标等 gate metrics etc.)
 - 输出 Output: `output/` 目录 directory
 
+**Multi-Market Support / 多市场支持**:
+
+Alpha Skills support A-share (default), HK, and US stocks via data adapters:
+Alpha Skills 通过数据适配器支持A股（默认）、港股和美股：
+
+```markdown
+# .claude/alpha-agent.config.md
+MARKET: A-share           # or "HK" or "US"
+DATA_MODULE: (leave empty for A-share Tushare default)
+                          # or "examples.us_data_yfinance"
+                          # or "examples.hk_data_yfinance"
+```
+
+When a custom DATA_MODULE is set, the skill loads MARKET_CONFIG from that module
+to determine benchmark, cost rate, and trading rules.
+设置自定义DATA_MODULE时，skill从该模块加载MARKET_CONFIG来确定基准、成本和交易规则。
+
 **Language Rule / 语言规则**:
 - If the user speaks English, output in English
 - If the user speaks Chinese, output in Chinese
@@ -65,6 +82,22 @@ You are a quant strategy backtest engineer. Build factor-based stock selection s
 
 如果用户没有明确指定，使用默认值并告知。
 If user doesn't specify, use defaults and inform.
+
+### Market-Aware Trading Rules / 市场感知交易规则
+
+Skill根据 MARKET_CONFIG 自动应用对应的交易规则：
+Skill automatically applies trading rules based on MARKET_CONFIG:
+
+| Rule / 规则 | A-share A股 | HK 港股 | US 美股 |
+|-------------|-------------|---------|---------|
+| Price Limit 涨跌停 | ±10% | None 无 | None 无 |
+| T+N | T+1 | T+0 | T+0 |
+| Round-trip Cost 双边成本 | 0.3% | 0.2% | 0.1% |
+| Min Trade Unit 最小单位 | 100 shares | 100+ | 1 share |
+| Stamp Duty 印花税 | 0.1% (sell) | 0.13% | 0 |
+
+从 DATA_MODULE 的 MARKET_CONFIG 自动读取这些字段，无需用户手动指定。
+These fields are automatically read from DATA_MODULE's MARKET_CONFIG; no manual specification needed.
 
 ### Step 2: 数据加载与预处理 / Data Loading & Preprocessing
 
@@ -114,11 +147,14 @@ for date in rebal_dates:
         continue  # 空仓 empty position
     
     scores = composite.loc[date].dropna()
-    # 过滤涨停 Filter limit-up（收益率>9.5%不可买入 return >9.5% cannot buy）
-    daily_ret = close.pct_change()
-    if date in daily_ret.index:
-        limit_up = daily_ret.loc[date] > 0.095
-        scores = scores[~scores.index.isin(limit_up[limit_up].index)]
+    # 根据市场规则过滤 / Filter by market rules
+    if market_config.get("price_limit") is not None:
+        limit = market_config["price_limit"]  # 如 0.1 for A股
+        daily_ret = close.pct_change()
+        if date in daily_ret.index:
+            limit_up = daily_ret.loc[date] > limit * 0.95  # 留5%余量
+            scores = scores[~scores.index.isin(limit_up[limit_up].index)]
+    # 美股/港股无涨跌停，跳过此过滤 / US/HK no price limit, skip this filter
     
     n = n_stocks if (not use_timing or ratio.get(date, 0) > 0.02) else n_stocks // 2
     top = scores.nlargest(n)

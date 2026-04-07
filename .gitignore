@@ -8,3 +8,6 @@ alpha_agent.db
 .daily_log/
 .claude/
 alpha-agent/
+examples/__pycache__/
+data_cache_us/
+data_cache_hk/
