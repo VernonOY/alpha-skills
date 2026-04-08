@@ -142,6 +142,21 @@ Then set `DATA_MODULE: my_data` in your config. The skills will automatically us
 Discover → Evaluate → Register → Monitor → Backtest → Report
 ```
 
+### Optional: Static Code Analysis 可选：静态代码检查
+
+Before running `alpha-evaluate` on a hand-written factor, you can pipe the code through [**qtype**](https://github.com/VernonOY/qtype) to catch common time-leak bugs:
+
+在运行 `alpha-evaluate` 之前，你可以用 [**qtype**](https://github.com/VernonOY/qtype) 扫描手写因子代码，捕捉常见的时间泄漏bug：
+
+```bash
+pip install qtype
+qtype check my_factor.py
+```
+
+qtype is a standalone AST-based linter that detects look-ahead bias (`shift(-1)`), future functions, survival bias (missing ST filters), alignment errors, and return-offset bugs. It is not a dependency of Alpha Skills — just a recommended pre-flight check for any quant code.
+
+qtype 是一个独立的 AST 静态分析器，不是 Alpha Skills 的依赖，但推荐在任何量化代码评估前先跑一遍。
+
 ### Evaluation Pipeline
 
 | Level | What | Time |
@@ -181,13 +196,21 @@ COST_RATE: 0.003
 - [x] Configurable evaluation criteria & gate checks
 - [x] Custom data source support (CSV / Parquet / custom Python module)
 - [x] Multi-platform compatibility (Cursor, Windsurf, Continue, ChatGPT, local models)
+- [x] Optional integration with [qtype](https://github.com/VernonOY/qtype) for static code checks
 - [ ] Automated factor mining skill (genetic programming)
 - [ ] Portfolio construction skill (factor → tradeable portfolio)
 - [ ] Market regime detection & factor-regime mapping
 - [ ] Factor crowding detection
-- [ ] Data quality dashboard & look-ahead bias detector
 - [ ] English-first skill variants
 - [ ] Web UI dashboard (standalone application)
+
+## Recommended Companion Tools 推荐配套工具
+
+These are independent tools that pair well with Alpha Skills — not dependencies:
+
+这些是与 Alpha Skills 搭配使用的独立工具，不是依赖项：
+
+- **[qtype](https://github.com/VernonOY/qtype)** — Static analyzer for quant code. Run it on your factor files to catch look-ahead bias, future functions, survival bias, alignment errors, and return-offset bugs before wasting compute on a fake-alpha backtest.
 
 ## License
 

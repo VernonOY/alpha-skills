@@ -81,6 +81,41 @@ to determine benchmark, cost rate, and trading rules.
 
 ## 执行流程 / Execution Pipeline
 
+### Step 0 (Optional): Static Code Check / 静态代码检查
+
+If the factor is provided as **a source file or a Python expression longer than one line**, offer to run `qtype` as a pre-flight check to catch look-ahead bias and time-leak bugs. `qtype` is an independent tool — check if it is installed:
+
+如果用户提供的是**源文件或多行 Python 表达式**，建议先跑一遍 `qtype` 预检查，捕捉前视偏差和时间泄漏bug。`qtype` 是独立工具，先检查是否已安装：
+
+```bash
+which qtype || pip show qtype
+```
+
+If installed and the factor is a file:
+如果已安装且因子是文件：
+
+```bash
+qtype check <path_to_factor.py>
+```
+
+**Rules / 规则**:
+- QT001 look-ahead-bias: `.shift(N)` with negative literal
+- QT002 future-function: calls to `lead`, `look_forward`, `peek_future`, etc.
+- QT003 survival-bias: universe builder missing ST / suspended / delisted filters
+- QT004 alignment-error: `.merge()` without explicit join keys
+- QT005 return-offset: `pct_change()` assigned to `forward_*` / `next_*` / `target`
+
+**Behavior / 行为**:
+- If qtype finds **errors** (QT001/QT002): stop evaluation and show the bug. Evaluating a factor with look-ahead bias produces fake alpha.
+- If qtype finds **warnings** (QT003/QT004/QT005): show them to the user and ask whether to proceed.
+- If qtype is **not installed**: skip this step silently. Do not block evaluation. Optionally mention qtype once: "Tip: install qtype to catch time-leak bugs automatically — `pip install qtype`."
+- If the factor is a **built-in factor name** (e.g., `pv_diverge`): skip this step entirely, built-ins are already verified.
+
+- 如果 qtype 发现**错误**（QT001/QT002）：停止评估并展示bug。带前视偏差的因子会产出虚假 alpha。
+- 如果发现**警告**（QT003/QT004/QT005）：展示给用户并询问是否继续。
+- 如果 qtype **未安装**：静默跳过，不要阻塞流程。可以提一句建议："提示：安装 qtype 可自动捕捉时间泄漏bug — `pip install qtype`。"
+- 如果因子是**内置因子名**（如 `pv_diverge`）：跳过此步，内置因子已验证。
+
 ### Step 1: 读取用户配置 / Read User Config
 
 ```python
