@@ -31,6 +31,19 @@ The AI reads these instructions and executes the research workflow — loading d
 | **alpha-backtest** | Single/multi-factor portfolio backtesting | "回测" / "backtest with these factors" |
 | **alpha-monitor** | Monitor active factors for IC decay | "检查因子健康" / "factor health check" |
 | **alpha-report** | Generate comprehensive analysis reports | "生成报告" / "factor report" |
+| **alpha-mine** | Automated factor mining with IC screening | "mine factors" / "挖掘因子" / "auto discover" |
+
+## What's New / 最新更新
+
+**v0.2 — Automated Factor Mining**
+- New `alpha-mine` skill: systematically search the factor expression space, screen via IC, and present discoveries with economic intuition scoring
+- All skills now fully self-contained — zero external package dependencies
+- Optional [qtype](https://github.com/VernonOY/qtype) pre-flight check for hand-written factor code
+
+**v0.1 — Initial Release**
+- 6 core research skills (discover / evaluate / library / backtest / monitor / report)
+- A-share, HK, and US market support
+- Bilingual (EN/ZH), multi-platform compatibility
 
 ## Quick Start
 
@@ -190,14 +203,14 @@ COST_RATE: 0.003
 
 ## Roadmap
 
-- [x] 6 core research skills (discover / evaluate / library / backtest / monitor / report)
+- [x] 7 core research skills (discover / evaluate / mine / library / backtest / monitor / report)
 - [x] A-share, HK, and US market support (out-of-the-box)
 - [x] Market-aware trading rules (price limits, T+N, costs)
 - [x] Configurable evaluation criteria & gate checks
 - [x] Custom data source support (CSV / Parquet / custom Python module)
 - [x] Multi-platform compatibility (Cursor, Windsurf, Continue, ChatGPT, local models)
 - [x] Optional integration with [qtype](https://github.com/VernonOY/qtype) for static code checks
-- [ ] Automated factor mining skill (genetic programming)
+- [x] Automated factor mining skill (template + combinatorial + mutation strategies)
 - [ ] Portfolio construction skill (factor → tradeable portfolio)
 - [ ] Market regime detection & factor-regime mapping
 - [ ] Factor crowding detection
