@@ -258,12 +258,114 @@ close = close[valid_stocks]
 根据用户输入的因子类型调用对应函数 / Call corresponding function based on user input：
 
 ```python
-from alpha_agent.factors.builtin import <对应因子函数 corresponding function>
-from alpha_agent.factors.preprocessing import standardize
+import pandas as pd
+import numpy as np
 
+# ── 因子计算函数（自包含，无外部依赖）/ Factor functions (self-contained, no external deps) ──
+
+def momentum(close, period=20):
+    return close.pct_change(period)
+
+def reversal(close, period=5):
+    return -close.pct_change(period)
+
+def volatility(close, period=20):
+    return -(close.pct_change().rolling(period).std() * np.sqrt(252))
+
+def price_volume_divergence(close, volume, period=20):
+    price_ret = close.pct_change()
+    vol_ret = volume.pct_change()
+    result = pd.DataFrame(index=close.index, columns=close.columns, dtype=float)
+    for col in close.columns:
+        if col in volume.columns:
+            result[col] = price_ret[col].rolling(period).corr(vol_ret[col])
+    return -result
+
+def rsi(close, period=14):
+    delta = close.diff()
+    gain = delta.clip(lower=0).rolling(period).mean()
+    loss = (-delta.clip(upper=0)).rolling(period).mean()
+    rs = gain / loss
+    return -(100 - 100 / (1 + rs) - 50)
+
+def macd_divergence(close, fast=12, slow=26, signal=9):
+    ema_fast = close.ewm(span=fast, adjust=False).mean()
+    ema_slow = close.ewm(span=slow, adjust=False).mean()
+    dif = ema_fast - ema_slow
+    dea = dif.ewm(span=signal, adjust=False).mean()
+    return (dif - dea) / close
+
+def bollinger_position(close, period=20, std_mult=2):
+    ma = close.rolling(period).mean()
+    std = close.rolling(period).std()
+    upper = ma + std_mult * std
+    lower = ma - std_mult * std
+    band_width = (upper - lower).replace(0, np.nan)
+    return -((close - lower) / band_width * 2 - 1)
+
+def atr_ratio(high, low, close, period=14):
+    prev_close = close.shift(1)
+    tr = pd.DataFrame(
+        np.maximum(np.maximum((high-low).values, (high-prev_close).abs().values), (low-prev_close).abs().values),
+        index=close.index, columns=close.columns
+    )
+    atr = tr.rolling(period).mean()
+    return -(atr / close.replace(0, np.nan))
+
+def turnover_rate(daily_basic_df, period=20):
+    df = daily_basic_df[["ts_code","trade_date","turnover_rate_f"]].copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+    pivot = df.pivot_table(index="trade_date", columns="ts_code", values="turnover_rate_f")
+    return -pivot.rolling(period).mean()
+
+def abnormal_turnover(daily_basic_df, period_short=5, period_long=60):
+    df = daily_basic_df[["ts_code","trade_date","turnover_rate_f"]].copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+    pivot = df.pivot_table(index="trade_date", columns="ts_code", values="turnover_rate_f")
+    return -(pivot.rolling(period_short).mean() / pivot.rolling(period_long).mean() - 1)
+
+def pe_ttm(daily_basic_df):
+    df = daily_basic_df[["ts_code","trade_date","pe_ttm"]].copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+    pivot = df.pivot_table(index="trade_date", columns="ts_code", values="pe_ttm")
+    return -pivot.where(pivot > 0)
+
+def pb(daily_basic_df):
+    df = daily_basic_df[["ts_code","trade_date","pb"]].copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+    pivot = df.pivot_table(index="trade_date", columns="ts_code", values="pb")
+    return -pivot.where(pivot > 0)
+
+def dividend_yield(daily_basic_df):
+    df = daily_basic_df[["ts_code","trade_date","dv_ttm"]].copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+    return df.pivot_table(index="trade_date", columns="ts_code", values="dv_ttm")
+
+# ── 预处理函数 / Preprocessing functions ──
+
+def winsorize_mad(df, n=5):
+    median = df.median(axis=1)
+    mad = df.sub(median, axis=0).abs().median(axis=1)
+    upper = median + n * 1.4826 * mad
+    lower = median - n * 1.4826 * mad
+    return df.clip(lower, upper, axis=0)
+
+def zscore_cross_section(df):
+    return df.sub(df.mean(axis=1), axis=0).div(df.std(axis=1), axis=0)
+
+def standardize(df, mad_n=5):
+    return zscore_cross_section(winsorize_mad(df, n=mad_n))
+
+# ── 计算因子 / Compute factor ──
 factor_values = <因子函数>(close, ...)  # 根据因子类型调用 call by factor type
 factor_values = standardize(factor_values)  # 截面标准化 cross-sectional standardize
 ```
+
+**按上述模式现场编写更多因子 / Write more factors following the pattern above**：
+对于内置因子映射表中未在上面提供完整实现的因子（如 roe, roa, gross_margin, net_profit_growth 等基本面因子），
+AI应参考已有因子的实现模式，使用 pandas pivot + rolling 等操作现场编写代码。
+For built-in factors not fully implemented above (e.g., roe, roa, gross_margin, net_profit_growth),
+the AI should write code on-the-fly following the same pattern using pandas pivot + rolling operations.
 
 **内置因子映射表 / Built-in Factor Mapping**（用户说因子名时参考 reference when user mentions factor name）：
 - momentum_20 → `momentum(close, 20)`
@@ -292,31 +394,119 @@ factor_values = standardize(factor_values)  # 截面标准化 cross-sectional st
 ### Step 5: 运行评估 / Run Evaluation
 
 ```python
-from alpha_agent.evaluation.metrics import compute_forward_returns
-from alpha_agent.evaluation.evaluator import FactorTester
+from scipy import stats
 
+def compute_forward_returns(close, periods=5, shift_days=1):
+    future_close = close.shift(-shift_days - periods + 1)
+    entry_close = close.shift(-shift_days + 1)
+    return future_close / entry_close.replace(0, np.nan) - 1.0
+
+def calc_ic_series(factor_values, forward_returns):
+    """计算每期截面IC（Spearman秩相关） / Compute per-period cross-sectional IC (Spearman rank corr)"""
+    ic_values, ic_dates = [], []
+    common_dates = factor_values.index.intersection(forward_returns.index)
+    common_stocks = factor_values.columns.intersection(forward_returns.columns)
+    for date in common_dates:
+        f = factor_values.loc[date, common_stocks].dropna()
+        r = forward_returns.loc[date, common_stocks].dropna()
+        common = f.index.intersection(r.index)
+        if len(common) < 5:
+            continue
+        fv, rv = f[common].values, r[common].values
+        valid = np.isfinite(fv) & np.isfinite(rv)
+        if valid.sum() < 5:
+            continue
+        corr, _ = stats.spearmanr(fv[valid], rv[valid])
+        if np.isfinite(corr):
+            ic_values.append(corr)
+            ic_dates.append(date)
+    return pd.Series(ic_values, index=pd.DatetimeIndex(ic_dates), name="IC")
+
+def calc_group_returns(factor_values, forward_returns, n_groups=5):
+    """分层回测 / Quintile stratification backtest"""
+    group_data = {f"G{i+1}": [] for i in range(n_groups)}
+    valid_dates = []
+    common_dates = factor_values.index.intersection(forward_returns.index)
+    common_stocks = factor_values.columns.intersection(forward_returns.columns)
+    for date in common_dates:
+        f = factor_values.loc[date, common_stocks].dropna()
+        r = forward_returns.loc[date, common_stocks].dropna()
+        common = f.index.intersection(r.index)
+        if len(common) < n_groups:
+            continue
+        f, r = f[common], r[common]
+        valid = np.isfinite(f) & np.isfinite(r)
+        f, r = f[valid], r[valid]
+        if len(f) < n_groups:
+            continue
+        try:
+            labels = pd.qcut(f.rank(method="first"), n_groups, labels=False)
+        except ValueError:
+            continue
+        valid_dates.append(date)
+        for g in range(n_groups):
+            mask = labels == g
+            group_data[f"G{g+1}"].append(r[mask].mean() if mask.sum() > 0 else np.nan)
+    return pd.DataFrame(group_data, index=pd.DatetimeIndex(valid_dates))
+
+# ── 运行评估 / Run evaluation ──
 results = {}
 for hp in holding_periods:  # [5, 10, 20]
     fwd_ret = compute_forward_returns(close, periods=hp)
     # 对齐 / Align
     cd = factor_values.index.intersection(fwd_ret.index)
     cs = factor_values.columns.intersection(fwd_ret.columns)
-    tester = FactorTester(factor_values.loc[cd, cs], fwd_ret.loc[cd, cs], n_groups=5)
-    s = tester.summary()
-    results[hp] = s
+    fv = factor_values.loc[cd, cs]
+    fr = fwd_ret.loc[cd, cs]
+    ic_series = calc_ic_series(fv, fr)
+    group_ret = calc_group_returns(fv, fr, n_groups=5)
+    ic_mean = ic_series.mean()
+    icir = ic_series.mean() / ic_series.std() if ic_series.std() > 0 else 0
+    ic_pos_ratio = (ic_series > 0).mean()
+    # 多空收益 / Long-short returns
+    ls_ret = group_ret["G5"] - group_ret["G1"]
+    ls_cum = (1 + ls_ret).cumprod()
+    ls_sharpe = ls_ret.mean() / ls_ret.std() * np.sqrt(252 / hp) if ls_ret.std() > 0 else 0
+    ls_maxdd = ((ls_cum - ls_cum.cummax()) / ls_cum.cummax()).min()
+    # 单调性 / Monotonicity
+    group_means = [group_ret[f"G{g+1}"].mean() for g in range(5)]
+    mono_corr, mono_p = stats.spearmanr(range(5), group_means)
+    results[hp] = {
+        "ic_mean": ic_mean, "icir": icir, "ic_pos_ratio": ic_pos_ratio,
+        "ls_sharpe": ls_sharpe, "ls_maxdd": ls_maxdd,
+        "monotonic": abs(mono_corr) > 0.8 and mono_p < 0.1,
+        "mono_corr": mono_corr, "mono_p": mono_p,
+        "ic_series": ic_series, "group_ret": group_ret,
+    }
 ```
 
 ### Step 6: 生成报告 / Generate Report
 
 ```python
-from alpha_agent.report.report import FactorReport
+import matplotlib.pyplot as plt
+import matplotlib
 
-# 用ICIR最高的持有期生成详细报告
-# Generate detailed report with the holding period having highest ICIR
-best_hp = max(results, key=lambda hp: abs(results[hp]["ic_stats"]["icir"]))
-best_tester = ...  # 重新创建对应tester / recreate corresponding tester
-report = FactorReport(best_tester, factor_name=f"{factor_name}_hp{best_hp}")
-report.generate_full_report(save_path=os.path.join(OUTPUT_DIR, f"eval_{factor_name}.png"))
+matplotlib.rcParams["font.sans-serif"] = ["SimHei", "Arial Unicode MS", "DejaVu Sans"]
+matplotlib.rcParams["axes.unicode_minus"] = False
+
+best_hp = max(results, key=lambda hp: abs(results[hp]["icir"]))
+best = results[best_hp]
+
+# 用matplotlib生成4子图报告 / Generate 4-subplot report with matplotlib:
+# 子图1 Subplot1: IC时序图 IC time series (bar chart, color by positive/negative)
+# 子图2 Subplot2: 累计IC Cumulative IC (line chart)
+# 子图3 Subplot3: 分组累计收益 Quintile cumulative returns (5 lines, G1~G5)
+# 子图4 Subplot4: 多空净值 Long-short NAV (line chart with drawdown shading)
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig.suptitle(f"Factor Report: {factor_name} (HP={best_hp}d)")
+
+# Plot IC series, cumulative IC, group returns, long-short NAV
+# ... (AI writes the specific plotting code based on results dict)
+
+plt.tight_layout()
+save_path = os.path.join(OUTPUT_DIR, f"eval_{factor_name}.png")
+fig.savefig(save_path, dpi=150, bbox_inches="tight")
+plt.close()
 ```
 
 ### Step 7: 输出结果 / Output Results

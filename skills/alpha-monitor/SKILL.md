@@ -58,12 +58,60 @@ to determine benchmark, cost rate, and trading rules.
 ### Step 1: 读取因子库 / Read Factor Library
 
 ```python
-import sys, os
-PROJECT_DIR = '<当前工作目录 current working directory>'
-sys.path.insert(0, PROJECT_DIR)
-from alpha_agent.factors.registry import FactorRegistry
+import sys, os, sqlite3, json, uuid
+from datetime import datetime
 
-reg = FactorRegistry(os.path.join(PROJECT_DIR, "alpha_agent.db"))
+PROJECT_DIR = '<当前工作目录 current working directory>'
+
+# ── 因子注册表（自包含，无外部依赖）/ Factor Registry (self-contained, no external deps) ──
+
+class FactorRegistry:
+    def __init__(self, db_path="alpha_skills.db"):
+        self.db_path = db_path
+        with sqlite3.connect(db_path) as conn:
+            conn.execute("""CREATE TABLE IF NOT EXISTS factors (
+                id TEXT PRIMARY KEY, name TEXT UNIQUE NOT NULL,
+                expression TEXT NOT NULL, category TEXT, description TEXT,
+                status TEXT DEFAULT 'active', market TEXT DEFAULT 'A-share',
+                ic_mean REAL, icir REAL, best_holding_period INTEGER,
+                quality TEXT, eval_date TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP, metadata TEXT)""")
+    
+    def register(self, name, expression, **kwargs):
+        fid = str(uuid.uuid4())[:8]
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO factors (id,name,expression,category,description,status,market,ic_mean,icir,best_holding_period,quality,eval_date,metadata) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (fid, name, expression, kwargs.get("category",""), kwargs.get("description",""),
+                 "active", kwargs.get("market","A-share"), kwargs.get("ic_mean"), kwargs.get("icir"),
+                 kwargs.get("best_holding_period"), kwargs.get("quality"),
+                 datetime.now().isoformat(), json.dumps(kwargs.get("metadata",{}))))
+        return fid
+    
+    def list_all(self, status=None):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            if status:
+                rows = conn.execute("SELECT * FROM factors WHERE status=? ORDER BY icir DESC", (status,)).fetchall()
+            else:
+                rows = conn.execute("SELECT * FROM factors ORDER BY icir DESC").fetchall()
+            return [dict(r) for r in rows]
+    
+    def get(self, name):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute("SELECT * FROM factors WHERE name=?", (name,)).fetchone()
+            return dict(row) if row else None
+    
+    def update_status(self, name, status):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("UPDATE factors SET status=? WHERE name=?", (status, name))
+    
+    def delete(self, name):
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("DELETE FROM factors WHERE name=?", (name,))
+
+reg = FactorRegistry(os.path.join(PROJECT_DIR, "alpha_skills.db"))
 active_factors = reg.list_all(status='active')
 ```
 

@@ -145,8 +145,13 @@ If the user confirms, run the full evaluation pipeline per alpha-evaluate skill.
 
 示例 / Example：
 ```python
-from alpha_agent.factors.builtin import reversal, price_volume_divergence, rsi
-from alpha_agent.factors.preprocessing import standardize
+# 因子函数和预处理函数定义参见 alpha-evaluate skill（自包含，无外部依赖）
+# Factor and preprocessing function definitions: see alpha-evaluate skill (self-contained, no external deps)
+
+# def reversal(close, period=5): return -close.pct_change(period)
+# def price_volume_divergence(close, volume, period=20): ...
+# def rsi(close, period=14): ...
+# def standardize(df, mad_n=5): ...
 
 f1 = standardize(reversal(close, 5))
 f2 = standardize(price_volume_divergence(close, volume, 20))

@@ -31,7 +31,6 @@ You are a quant strategy backtest engineer. Build factor-based stock selection s
 
 ## 项目定位 / Project Context
 
-- Python包 Package: `alpha_agent/` (backtest/engine.py, backtest/result.py, factors/builtin.py等)
 - 数据 Data: `data_cache/` (已缓存Parquet cached Parquet)
 - 配置 Config: `.claude/alpha-agent.config.md` (门控指标等 gate metrics etc.)
 - 输出 Output: `output/` 目录 directory
@@ -107,10 +106,64 @@ Same as alpha-evaluate data loading pipeline (load cache → pivot → forward-a
 ### Step 3: 计算因子并生成信号 / Compute Factors & Generate Signals
 
 ```python
-from alpha_agent.factors.builtin import <因子函数 factor functions>
-from alpha_agent.factors.preprocessing import standardize
+import pandas as pd
+import numpy as np
 
-# 计算各因子 / Compute each factor
+# ── 因子计算函数（自包含）/ Factor functions (self-contained) ──
+# 定义所需因子函数（参见 alpha-evaluate skill 中的完整实现）
+# Define required factor functions (see alpha-evaluate skill for full implementations)
+
+def momentum(close, period=20):
+    return close.pct_change(period)
+
+def reversal(close, period=5):
+    return -close.pct_change(period)
+
+def volatility(close, period=20):
+    return -(close.pct_change().rolling(period).std() * np.sqrt(252))
+
+def price_volume_divergence(close, volume, period=20):
+    price_ret = close.pct_change()
+    vol_ret = volume.pct_change()
+    result = pd.DataFrame(index=close.index, columns=close.columns, dtype=float)
+    for col in close.columns:
+        if col in volume.columns:
+            result[col] = price_ret[col].rolling(period).corr(vol_ret[col])
+    return -result
+
+def rsi(close, period=14):
+    delta = close.diff()
+    gain = delta.clip(lower=0).rolling(period).mean()
+    loss = (-delta.clip(upper=0)).rolling(period).mean()
+    rs = gain / loss
+    return -(100 - 100 / (1 + rs) - 50)
+
+def turnover_rate(daily_basic_df, period=20):
+    df = daily_basic_df[["ts_code","trade_date","turnover_rate_f"]].copy()
+    df["trade_date"] = pd.to_datetime(df["trade_date"], format="%Y%m%d")
+    pivot = df.pivot_table(index="trade_date", columns="ts_code", values="turnover_rate_f")
+    return -pivot.rolling(period).mean()
+
+# ... 其他因子按同样模式定义 / other factors defined following the same pattern ...
+# AI应根据用户指定的因子名称，参考 alpha-evaluate skill 中的实现模式现场编写
+# AI should write factor code on-the-fly based on the patterns in alpha-evaluate skill
+
+# ── 预处理函数 / Preprocessing functions ──
+
+def winsorize_mad(df, n=5):
+    median = df.median(axis=1)
+    mad = df.sub(median, axis=0).abs().median(axis=1)
+    upper = median + n * 1.4826 * mad
+    lower = median - n * 1.4826 * mad
+    return df.clip(lower, upper, axis=0)
+
+def zscore_cross_section(df):
+    return df.sub(df.mean(axis=1), axis=0).div(df.std(axis=1), axis=0)
+
+def standardize(df, mad_n=5):
+    return zscore_cross_section(winsorize_mad(df, n=mad_n))
+
+# ── 计算各因子 / Compute each factor ──
 factor_dfs = {}
 for name in factor_names:
     factor_dfs[name] = standardize(<对应因子函数 corresponding function>(...))
@@ -166,24 +219,91 @@ for date in rebal_dates:
 ### Step 4: 运行回测 / Run Backtest
 
 ```python
-from alpha_agent.backtest.engine import BacktestEngine
+def simple_backtest(close, signals, cost_rate=0.003):
+    """
+    简易回测引擎 / Simple backtest engine
+    close: DataFrame (index=日期, columns=股票)
+    signals: dict {date: {stock: weight}} 或 {date: [stock_list]}
+    cost_rate: 双边交易成本 round-trip transaction cost
+    返回 Returns: nav Series, metrics dict
+    """
+    # 如果signals的value是list，转为等权 / Convert list to equal weight
+    for dt in signals:
+        if isinstance(signals[dt], list):
+            n = len(signals[dt])
+            signals[dt] = {s: 1.0/n for s in signals[dt]} if n > 0 else {}
+    
+    trading_days = close.index.sort_values()
+    signal_dates = sorted(signals.keys())
+    
+    nav_values, nav_dates = [], []
+    current_weights = {}
+    current_nav = 1.0
+    daily_ret = close.pct_change()
+    
+    for i, today in enumerate(trading_days):
+        if today < signal_dates[0]:
+            continue
+        # 持仓漂移 / Portfolio drift
+        if current_weights and i > 0:
+            port_ret = sum(w * (daily_ret.at[today, s] if s in daily_ret.columns and pd.notna(daily_ret.at[today, s]) else 0)
+                          for s, w in current_weights.items())
+            current_nav *= (1 + port_ret)
+        # 调仓 / Rebalance
+        if today in signals and signals[today]:
+            new_w = signals[today]
+            total = sum(new_w.values())
+            if total > 0:
+                new_w = {k: v/total for k, v in new_w.items()}
+            turnover = sum(abs(new_w.get(s, 0) - current_weights.get(s, 0))
+                          for s in set(new_w) | set(current_weights))
+            current_nav *= (1 - turnover * cost_rate / 2)
+            current_weights = new_w
+        nav_values.append(current_nav)
+        nav_dates.append(today)
+    
+    nav = pd.Series(nav_values, index=pd.DatetimeIndex(nav_dates))
+    # 计算指标 / Compute metrics
+    daily_r = nav.pct_change().dropna()
+    n_years = len(daily_r) / 252
+    total_ret = nav.iloc[-1] / nav.iloc[0] - 1
+    ann_ret = (1 + total_ret) ** (1/n_years) - 1 if n_years > 0 else 0
+    ann_vol = daily_r.std() * np.sqrt(252)
+    sharpe = (ann_ret - 0.025) / ann_vol if ann_vol > 0 else 0
+    cummax = nav.cummax()
+    max_dd = ((nav - cummax) / cummax).min()
+    monthly = nav.resample("ME").last().pct_change().dropna()
+    win_rate = (monthly > 0).mean() if len(monthly) > 0 else 0
+    profit_months = monthly[monthly > 0].sum()
+    loss_months = monthly[monthly < 0].sum()
+    profit_factor = abs(profit_months / loss_months) if abs(loss_months) > 1e-12 else float("inf")
+    
+    return nav, {
+        "annual_return": ann_ret, "sharpe": sharpe, "max_drawdown": max_dd,
+        "monthly_win_rate": win_rate, "profit_factor": profit_factor,
+        "total_return": total_ret, "annual_vol": ann_vol,
+    }
 
+# ── 运行回测 / Run backtest ──
 # 基准 / Benchmark
 idx = index_data.copy()
 idx["trade_date"] = pd.to_datetime(idx["trade_date"], format="%Y%m%d")
 benchmark = idx.set_index("trade_date")["close"].sort_index()
 
-engine = BacktestEngine(close, benchmark, cost_rate=cost_rate, risk_free=risk_free)
-result = engine.run(signals)
+nav, metrics = simple_backtest(close, signals, cost_rate=cost_rate)
 ```
 
 ### Step 5: 门控检查 / Gate Check
 
 ```python
 # 从配置读取门控阈值 / Read gate thresholds from config
-gate = result.gate_check()
-pref = result.preferred_check()
-metrics = result.metrics()
+# 使用 metrics dict 中的指标进行门控检查 / Use metrics dict for gate checks
+gate_pass = {
+    "sharpe >= 1.0": metrics["sharpe"] >= 1.0,
+    "max_dd >= -25%": metrics["max_drawdown"] >= -0.25,
+    "profit_factor >= 1.0": metrics["profit_factor"] >= 1.0,
+    "monthly_wr >= 55%": metrics["monthly_win_rate"] >= 0.55,
+}
 ```
 
 ### Step 6: IS/OOS对比 / IS/OOS Comparison
@@ -193,20 +313,37 @@ metrics = result.metrics()
 is_signals = {d: s for d, s in signals.items() if d <= is_end}
 oos_signals = {d: s for d, s in signals.items() if d >= oos_start}
 
-is_result = engine.run(is_signals)
-oos_result = engine.run(oos_signals)
+is_nav, is_metrics = simple_backtest(close, is_signals, cost_rate=cost_rate)
+oos_nav, oos_metrics = simple_backtest(close, oos_signals, cost_rate=cost_rate)
 
-from alpha_agent.backtest.result import BacktestResult
-decay = BacktestResult.oos_sharpe_decay(is_result, oos_result)
+# Sharpe衰减 / Sharpe decay
+sharpe_decay = 1 - oos_metrics["sharpe"] / is_metrics["sharpe"] if is_metrics["sharpe"] != 0 else float("nan")
 ```
 
 ### Step 7: 生成报告 / Generate Report
 
 ```python
-from alpha_agent.report.report import StrategyReport
+import matplotlib.pyplot as plt
+import matplotlib
 
-report = StrategyReport(result, strategy_name="MultiFactorStrategy")
-report.generate_full_report(save_path=os.path.join(OUTPUT_DIR, "backtest_report.png"))
+matplotlib.rcParams["font.sans-serif"] = ["SimHei", "Arial Unicode MS", "DejaVu Sans"]
+matplotlib.rcParams["axes.unicode_minus"] = False
+
+# 用matplotlib生成回测报告图表 / Generate backtest report charts with matplotlib:
+# 子图1 Subplot1: 策略净值 vs 基准净值 Strategy NAV vs Benchmark NAV (line chart)
+# 子图2 Subplot2: 回撤曲线 Drawdown curve (filled area chart)
+# 子图3 Subplot3: 月度收益热力图 Monthly return heatmap
+# 子图4 Subplot4: 滚动Sharpe Rolling Sharpe (line chart, 60-day window)
+fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig.suptitle("Backtest Report: MultiFactorStrategy")
+
+# Plot NAV, drawdown, monthly returns, rolling Sharpe
+# ... (AI writes the specific plotting code based on nav and metrics)
+
+plt.tight_layout()
+save_path = os.path.join(OUTPUT_DIR, "backtest_report.png")
+fig.savefig(save_path, dpi=150, bbox_inches="tight")
+plt.close()
 ```
 
 ### Step 8: 输出结果 / Output Results

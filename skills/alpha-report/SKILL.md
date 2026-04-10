@@ -91,7 +91,7 @@ to determine benchmark, cost rate, and trading rules.
 1. 识别报告类型和目标因子 / Identify report type and target factors
 2. 从因子注册表读取元数据 / Read metadata from factor registry
 3. 如需要，重新计算因子值和指标 / If needed, recompute factor values and metrics
-4. 生成图表 / Generate charts（使用 using alpha_agent.report.report 中的 FactorReport/StrategyReport）
+4. 生成图表 / Generate charts（使用matplotlib直接绘制 generate directly with matplotlib）
 5. 输出文字摘要 + 图表文件路径 / Output text summary + chart file path
 
 ## 输出格式 / Output Format
