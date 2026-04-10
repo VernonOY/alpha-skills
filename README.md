@@ -1,239 +1,221 @@
-# Alpha Skills
+<h1 align="center">Alpha Skills</h1>
 
-**Quantitative factor research skills for AI coding assistants.**
+<p align="center">
+<strong>Your AI-Powered Senior Quant Researcher.</strong><br>
+<em>Discover alpha. Evaluate factors. Monitor decay. Backtest strategies.<br>All through natural language — in any AI coding assistant.</em>
+</p>
 
-A collection of structured skill definitions that turn any LLM-powered coding assistant into a quantitative factor research workstation. Supports Claude Code, Cursor, Windsurf, Continue, and any AI coding tool that accepts system prompts.
+<p align="center">
+<a href="#quick-start">Quick Start</a> · <a href="#what-can-it-do">What Can It Do</a> · <a href="#multi-market">Multi-Market</a> · <a href="#skills-reference">Skills</a> · <a href="CONTRIBUTING.md">Contribute</a>
+</p>
 
-> 一套量化因子研究技能集，将任何AI编程助手变成专业的因子研究工作站。
+---
+
+> **Hiring a quant researcher costs $300K/year. This one is free, open-source, and works 24/7.**
+>
+> Alpha Skills turns any AI coding assistant into a senior quantitative researcher. It discovers factors, evaluates them with institutional-grade methodology (IC/ICIR/quintile/robustness), monitors for alpha decay, and runs multi-factor backtests — all from a single sentence.
+>
+> **招一个量化研究员年薪百万。这个免费、开源、7×24小时工作。**
 
 ![Alpha Skills Demo](assets/demo.png)
 
 ---
 
-## What are Alpha Skills?
+## What Can It Do
 
-Alpha Skills are **structured instruction files** (Markdown) that teach AI coding assistants how to perform professional quantitative factor research. Each skill defines:
+**You say one sentence. It does the rest.**
 
-- **When to activate** — trigger phrases in natural language
-- **What to do** — step-by-step research methodology
-- **How to compute** — Python code patterns for factor calculation, evaluation, and backtesting
-- **How to present** — standardized output formats for results
+```
+You:  "Evaluate the price-volume divergence factor"
+AI:   📊 IC Mean=0.066 | ICIR=0.696 | Rating: ⭐ Strong
+      Quintile spread monotonic. Best holding period: 20 days.
+      Report saved → output/eval_pv_diverge.png
 
-The AI reads these instructions and executes the research workflow — loading data, computing factors, running statistical tests, generating reports — all through natural conversation.
+You:  "Mine 50 candidate factors and show me the best ones"
+AI:   ⛏️ Scanned 50 candidates → 12 passed IC screen
+      Top: PV divergence 20d (ICIR=0.70), Low downside vol (ICIR=0.53)...
+      Register to library?
 
-## Skills
+You:  "Backtest using my top 3 factors"
+AI:   📈 Sharpe=0.74 | MaxDD=-13.9% | Profit Factor=2.24
+      Gate check: ✓ PF>1 ✓ MDD>-25% ✗ Sharpe<1.0
+```
 
-| Skill | Description | Trigger Examples |
-|-------|-------------|-----------------|
-| **alpha-discover** | Design factors from natural language | "帮我找一个量价背离因子" / "design a momentum factor" |
-| **alpha-evaluate** | Multi-level factor evaluation (IC/ICIR/quintile) | "评估reversal_5因子" / "evaluate this factor" |
-| **alpha-library** | Factor registry with lifecycle management | "查看因子库" / "register this factor" |
-| **alpha-backtest** | Single/multi-factor portfolio backtesting | "回测" / "backtest with these factors" |
-| **alpha-monitor** | Monitor active factors for IC decay | "检查因子健康" / "factor health check" |
-| **alpha-report** | Generate comprehensive analysis reports | "生成报告" / "factor report" |
-| **alpha-mine** | Automated factor mining with IC screening | "mine factors" / "挖掘因子" / "auto discover" |
+No boilerplate. No notebooks. No 200 lines of pandas. Just results.
 
-## What's New / 最新更新
+## Skills Reference
 
-**v0.2 — Automated Factor Mining**
-- New `alpha-mine` skill: systematically search the factor expression space, screen via IC, and present discoveries with economic intuition scoring
-- All skills now fully self-contained — zero external package dependencies
-- Optional [qtype](https://github.com/VernonOY/qtype) pre-flight check for hand-written factor code
+| Skill | What It Does | Try Saying |
+|-------|-------------|------------|
+| 🔍 **alpha-discover** | Design factors from natural language | "find me a low-volatility factor" |
+| 📊 **alpha-evaluate** | IC / ICIR / quintile / long-short / robustness | "evaluate reversal_5" |
+| ⛏️ **alpha-mine** | Auto-mine factor candidates, IC screen, rank | "mine 50 factors" |
+| 📚 **alpha-library** | Register, list, search, retire factors (SQLite) | "show my factor library" |
+| 📈 **alpha-backtest** | Single & multi-factor portfolio backtest | "backtest with pv_diverge + turnover" |
+| 🏥 **alpha-monitor** | Detect IC decay, crowding, regime shift | "check factor health" |
+| 📋 **alpha-report** | Panoramic, deep-dive, comparison reports | "generate factor report" |
 
-**v0.1 — Initial Release**
-- 6 core research skills (discover / evaluate / library / backtest / monitor / report)
-- A-share, HK, and US market support
-- Bilingual (EN/ZH), multi-platform compatibility
-
+<a id="quick-start"></a>
 ## Quick Start
 
-### 1. Clone
+### 1. Get the skills
 
 ```bash
 git clone https://github.com/VernonOY/alpha-skills.git
 ```
 
-### 2. Install Skills
+### 2. Load into your AI assistant
 
-**Cursor / Windsurf**: Copy `skills/alpha-*/SKILL.md` content into `.cursorrules` or `.windsurfrules`
+| Platform | How |
+|----------|-----|
+| **Cursor** | Copy `skills/alpha-*/SKILL.md` → `.cursorrules` |
+| **Windsurf** | Copy → `.windsurfrules` |
+| **Claude Code** | `cp -r skills/alpha-* ~/.claude/skills/` |
+| **Any LLM** | Paste SKILL.md as system prompt |
 
-**Other AI coding tools**: Include SKILL.md content as system prompt or rules file
-
-### 3. Configure
-
-Create a config file with your data source and evaluation preferences (see [Configuration](#configuration)).
-
-### 4. Use
-
-Tell your AI assistant: "评估pv_diverge因子" or "evaluate the reversal factor" — it handles the rest.
-
-## Requirements
+### 3. Install Python deps
 
 ```bash
 pip install pandas numpy scipy matplotlib pyarrow
-# For A-share data via Tushare:
-pip install tushare
+pip install tushare    # A-share
+pip install yfinance   # US / HK
 ```
 
-## Multi-Market Support 多市场支持
+### 4. Talk to it
 
-Alpha Skills work out-of-the-box with **A-share, HK, and US** stocks:
+```
+"evaluate the momentum_20 factor"
+"mine volatility factors"
+"backtest my top 3 factors, 2022 to 2025"
+```
 
-| Market 市场 | Adapter 适配器 | Data Source 数据源 | Setup 配置 |
-|-------------|----------------|-------------------|------------|
-| **A-share 中国A股** | Default | [Tushare Pro](https://tushare.pro) | `pip install tushare` |
-| **HK 港股** | `examples/hk_data_yfinance.py` | Yahoo Finance | `pip install yfinance` |
-| **US 美股** | `examples/us_data_yfinance.py` | Yahoo Finance | `pip install yfinance` |
+<a id="multi-market"></a>
+## Multi-Market: A-Share · Hong Kong · US
 
-Just set `MARKET` and `DATA_MODULE` in your config:
+Works out of the box for three markets. Auto-adapts trading rules per market:
+
+| | A-share 🇨🇳 | Hong Kong 🇭🇰 | US 🇺🇸 |
+|---|---|---|---|
+| **Data** | Tushare Pro | Yahoo Finance | Yahoo Finance |
+| **Price Limit** | ±10% | None | None |
+| **T+N** | T+1 | T+0 | T+0 |
+| **Cost** | 0.3% | 0.2% | 0.1% |
+| **Benchmark** | CSI 300 | HSI | S&P 500 |
+| **Pool** | 5000+ stocks | 78 HSI constituents | 143 S&P 500 |
+
+Switch markets in one line:
 
 ```markdown
-# US stocks
 MARKET: US
 DATA_MODULE: examples.us_data_yfinance
-
-# HK stocks
-MARKET: HK
-DATA_MODULE: examples.hk_data_yfinance
-
-# A-share (default, no DATA_MODULE needed)
-MARKET: A-share
 ```
 
-The skills automatically adapt trading rules per market:
+**Bring your own data.** Write a 7-function Python adapter for Bloomberg, AkShare, Binance, or any source — [see interface spec](examples/README.md).
 
-| Rule 规则 | A-share | HK | US |
-|-----------|---------|-----|-----|
-| Price Limit 涨跌停 | ±10% | None 无 | None 无 |
-| T+N | T+1 | T+0 | T+0 |
-| Round-trip Cost 双边成本 | 0.3% | 0.2% | 0.1% |
-
-## Custom Data Sources 自定义数据源
-
-Need a different data source (AkShare, Bloomberg, Binance, etc.)? Write your own adapter — see [`examples/README.md`](examples/README.md) for the interface spec.
-
-需要其他数据源（AkShare、Bloomberg、币安等）？编写自己的适配器 — 接口规范见 [`examples/README.md`](examples/README.md)。
-
-### Using Your Own Data API
-
-Create a Python module (e.g., `my_data.py`) that provides these functions:
-
-```python
-def load_prices(start_date, end_date):
-    """Return DataFrame: ts_code, trade_date, open, high, low, close, vol, amount"""
-    ...
-
-def load_adj_factor(start_date, end_date):
-    """Return DataFrame: ts_code, trade_date, adj_factor"""
-    ...
-
-def load_daily_basic(start_date, end_date):
-    """Return DataFrame: ts_code, trade_date, pe_ttm, pb, turnover_rate_f, ..."""
-    ...
-
-def load_financial(start_date, end_date):
-    """Return DataFrame: ts_code, ann_date, end_date, roe, roa, ..."""
-    ...
-```
-
-Then set `DATA_MODULE: my_data` in your config. The skills will automatically use your module.
-
-## Supported Platforms
-
-| Platform | Method | Status |
-|----------|--------|--------|
-| AI coding assistants | Copy SKILL.md to system prompt or rules file | Tested |
-| Cursor | `.cursorrules` | Compatible |
-| Windsurf | `.windsurfrules` | Compatible |
-| Continue | config system prompt | Compatible |
-| ChatGPT | paste as instructions | Compatible |
-| Local models | system prompt | Depends on model capability |
-
-## Research Workflow
+## How It Works
 
 ```
-Discover → Evaluate → Register → Monitor → Backtest → Report
+┌─────────────────────────────────────────────┐
+│           You (natural language)             │
+├─────────────────────────────────────────────┤
+│          AI Coding Assistant                │
+│   (Cursor / Windsurf / Claude Code / ...)   │
+├─────────────────────────────────────────────┤
+│           Alpha Skills (7 SKILL.md)         │
+│  discover · evaluate · mine · library       │
+│  backtest · monitor · report                │
+├─────────────────────────────────────────────┤
+│     Python (pandas/numpy/scipy/matplotlib)  │
+│     → factor computation                    │
+│     → IC/ICIR/quintile evaluation           │
+│     → portfolio backtesting                 │
+│     → SQLite factor registry                │
+├─────────────────────────────────────────────┤
+│  Data: Tushare │ YFinance │ CSV │ Custom    │
+└─────────────────────────────────────────────┘
 ```
 
-### Optional: Static Code Analysis 可选：静态代码检查
+**Zero framework dependency.** Each skill is a self-contained Markdown file. The AI reads it, writes the Python, runs it. Nothing to install except standard data science packages.
 
-Before running `alpha-evaluate` on a hand-written factor, you can pipe the code through [**qtype**](https://github.com/VernonOY/qtype) to catch common time-leak bugs:
+## Evaluation Pipeline
 
-在运行 `alpha-evaluate` 之前，你可以用 [**qtype**](https://github.com/VernonOY/qtype) 扫描手写因子代码，捕捉常见的时间泄漏bug：
+Your AI quant researcher doesn't just compute IC. It runs a **4-level institutional-grade evaluation**:
 
-```bash
-pip install qtype
-qtype check my_factor.py
-```
+| Level | What | Speed |
+|-------|------|-------|
+| **L0** | Syntax + data validation | instant |
+| **L1** | Quick IC screen (sampled 200 stocks × 2 years) | <30s |
+| **L2** | Full: IC series, ICIR, quintile returns, long-short, monotonicity | 1-3 min |
+| **L3** | Robustness: parameter perturbation, rolling window, start-date sensitivity | 5-15 min |
 
-qtype is a standalone AST-based linter that detects look-ahead bias (`shift(-1)`), future functions, survival bias (missing ST filters), alignment errors, and return-offset bugs. It is not a dependency of Alpha Skills — just a recommended pre-flight check for any quant code.
+Plus optional **[qtype](https://github.com/VernonOY/qtype)** pre-flight — static analysis to catch look-ahead bias before you waste compute on fake alpha.
 
-qtype 是一个独立的 AST 静态分析器，不是 Alpha Skills 的依赖，但推荐在任何量化代码评估前先跑一遍。
+## Factor Mining Engine
 
-### Evaluation Pipeline
+`alpha-mine` systematically searches the factor expression space:
 
-| Level | What | Time |
-|-------|------|------|
-| L0 | Syntax validation | instant |
-| L1 | Quick IC screen (sampled) | <30s |
-| L2 | Full test (IC/ICIR/quintile/long-short) | 1-3min |
-| L3 | Robustness (parameter perturbation, rolling window) | 5-15min |
+**3 mining strategies:**
+- **Template-based** — momentum, mean-reversion, volatility, volume, composite templates × multiple window sizes
+- **Combinatorial** — chain operators: `cs_rank(ts_corr(close, volume, 20))`
+- **Mutation** — take a known strong factor, mutate parameters/operators
 
-### Configurable Criteria
+**Pipeline:** Generate 50+ candidates → IC quick screen → full evaluate top 10 → LLM judges economic intuition → present ranked results
 
-Users customize evaluation thresholds via config file:
+**Overfitting guard:** Every surviving factor gets an **economic intuition score** (Strong / Moderate / Weak). Factors without a clear behavioral story are flagged as potential data mining.
+
+## Built-in Factors (25+)
+
+| Category | Factors |
+|----------|---------|
+| **Price-Volume** | momentum · reversal · volatility · pv_diverge · rsi · macd · bollinger · atr_ratio · turnover · abnormal_turnover |
+| **Fundamental** | roe · roa · gross_margin · net_profit_growth · revenue_growth |
+| **Valuation** | pe_ttm · pb · ps_ttm · dividend_yield · peg |
+| **Composite** | quality_score · value_score · growth_momentum |
+
+All gate checks and evaluation thresholds are **user-configurable**:
 
 ```markdown
 GATE_SHARPE: 1.0
 GATE_MAX_DRAWDOWN: -0.25
 GATE_PROFIT_FACTOR: 1.0
 EVAL_ICIR_STRONG: 0.5
-COST_RATE: 0.003
 ```
 
-## Built-in Factors (25+)
+## What's New
 
-**Price-Volume**: momentum · reversal · volatility · pv_diverge · rsi · macd · bollinger · atr_ratio · turnover · abnormal_turnover
+**v0.2 — Automated Factor Mining**
+- `alpha-mine`: systematically search factor expression space, IC screen, economic intuition scoring
+- All skills fully self-contained — zero external package dependencies
+- Optional [qtype](https://github.com/VernonOY/qtype) pre-flight check
 
-**Fundamental**: roe · roa · gross_margin · net_profit_growth · revenue_growth
-
-**Valuation**: pe_ttm · pb · ps_ttm · dividend_yield · peg
-
-**Composite**: quality_score · value_score · growth_momentum
+**v0.1 — Initial Release**
+- 7 core skills · A-share/HK/US support · bilingual EN/ZH · multi-platform
 
 ## Roadmap
 
-- [x] 7 core research skills (discover / evaluate / mine / library / backtest / monitor / report)
-- [x] A-share, HK, and US market support (out-of-the-box)
-- [x] Market-aware trading rules (price limits, T+N, costs)
-- [x] Configurable evaluation criteria & gate checks
-- [x] Custom data source support (CSV / Parquet / custom Python module)
-- [x] Multi-platform compatibility (Cursor, Windsurf, Continue, ChatGPT, local models)
-- [x] Optional integration with [qtype](https://github.com/VernonOY/qtype) for static code checks
-- [x] Automated factor mining skill (template + combinatorial + mutation strategies)
-- [ ] Portfolio construction skill (factor → tradeable portfolio)
+- [x] 7 research skills (discover / evaluate / mine / library / backtest / monitor / report)
+- [x] A-share, HK, and US market support
+- [x] Market-aware trading rules
+- [x] Automated factor mining (template + combinatorial + mutation)
+- [x] Custom data source support
+- [x] Multi-platform (Cursor, Windsurf, Claude Code, ChatGPT, local models)
+- [x] [qtype](https://github.com/VernonOY/qtype) integration for static code checks
+- [ ] Portfolio construction (factor → tradeable portfolio)
 - [ ] Market regime detection & factor-regime mapping
 - [ ] Factor crowding detection
-- [ ] English-first skill variants
-- [ ] Web UI dashboard (standalone application)
-
-## Recommended Companion Tools 推荐配套工具
-
-These are independent tools that pair well with Alpha Skills — not dependencies:
-
-这些是与 Alpha Skills 搭配使用的独立工具，不是依赖项：
-
-- **[qtype](https://github.com/VernonOY/qtype)** — Static analyzer for quant code. Run it on your factor files to catch look-ahead bias, future functions, survival bias, alignment errors, and return-offset bugs before wasting compute on a fake-alpha backtest.
+- [ ] Web UI dashboard
 
 ## License
 
-Apache 2.0 — see [LICENSE](LICENSE) for details.
+Apache 2.0
 
 ## Contributing
 
-PRs welcome! You can:
-- Add new skills for different research workflows
-- Adapt existing skills for other markets (US, HK, crypto)
-- Add support for new data providers (Yahoo Finance, AkShare, Binance, etc.)
-- Improve evaluation methodology
-- Translate skills to other languages
+[See CONTRIBUTING.md](CONTRIBUTING.md) — add skills, data adapters, or improve methodology.
+
+---
+
+<p align="center">
+<strong>Stop writing boilerplate. Start finding alpha.</strong><br>
+<sub>Built by quants who got tired of copy-pasting the same IC calculation for the 500th time.</sub>
+</p>
