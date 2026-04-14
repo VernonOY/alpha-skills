@@ -54,6 +54,8 @@ No boilerplate. No notebooks. No 200 lines of pandas. Just results.
 | 📈 **alpha-backtest** | Single & multi-factor portfolio backtest | "backtest with pv_diverge + turnover" |
 | 🏥 **alpha-monitor** | Detect IC decay, crowding, regime shift | "check factor health" |
 | 📋 **alpha-report** | Panoramic, deep-dive, comparison reports | "generate factor report" |
+| 📡 **alpha-signal** | Daily trading signal — target portfolio output | "today's signals" / "生成信号" |
+| 🤖 **alpha-autopilot** | Autonomous loop: mine → evaluate → register → monitor → retire | "run autopilot" / "自动驾驶" |
 
 <a id="quick-start"></a>
 ## Quick Start
@@ -183,6 +185,11 @@ EVAL_ICIR_STRONG: 0.5
 
 ## What's New
 
+**v0.3 — Autopilot & Live Signals**
+- `alpha-signal`: daily trading signal generator — outputs target portfolio from active factors
+- `alpha-autopilot`: autonomous research loop — auto-mine, evaluate, register, monitor, retire
+- Professional knowledge base: 6 expert-level reference documents (2,795 lines)
+
 **v0.2 — Automated Factor Mining**
 - `alpha-mine`: systematically search factor expression space, IC screen, economic intuition scoring
 - All skills fully self-contained — zero external package dependencies
@@ -193,7 +200,10 @@ EVAL_ICIR_STRONG: 0.5
 
 ## Roadmap
 
-- [x] 7 research skills (discover / evaluate / mine / library / backtest / monitor / report)
+- [x] 9 skills (discover / evaluate / mine / library / backtest / monitor / report / signal / autopilot)
+- [x] Daily signal generation (target portfolio output)
+- [x] Autonomous research loop (mine → evaluate → register → monitor → retire)
+- [x] Professional knowledge base (6 expert-level documents, 2,795 lines)
 - [x] A-share, HK, and US market support
 - [x] Market-aware trading rules
 - [x] Automated factor mining (template + combinatorial + mutation)
